@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroTrack - Real-time Bio-AI Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&family=JetBrains+Mono&display=swap');
+        
+        :root {
+            --primary: #00f2ff;
+            --secondary: #7000ff;
+            --bg: #030305;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: var(--bg);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .glass-panel {
+            background: rgba(10, 10, 20, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        }
+
+        .neon-text {
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+        }
+
+        .grid-bg {
+            background-image: linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .pulse-anim {
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+
+        canvas {
+            filter: drop-shadow(0 0 5px rgba(0, 242, 255, 0.3));
+        }
+    </style>
+</head>
+<body class="grid-bg min-h-screen">
+
+    <!-- Header -->
+    <header class="p-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-black/50 backdrop-blur-xl z-50">
+        <div class="flex items-center gap-3">
+            <div class="relative">
+                <div class="w-10 h-10 bg-cyan-500/20 rounded-full flex items-center justify-center border border-cyan-500/50">
+                    <i data-lucide="activity" class="text-cyan-400 w-6 h-6"></i>
+                </div>
+                <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-black pulse-anim"></div>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight uppercase italic">Neuro<span class="text-cyan-400">Track</span></h1>
+                <p class="text-[9px] text-gray-500 font-mono tracking-widest uppercase">System & Bio-Health Intelligence</p>
+            </div>
+        </div>
+        <div class="flex gap-6 items-center">
+            <div class="hidden md:block text-right">
+                <p class="text-[10px] text-gray-500 font-mono">Uptime: <span id="uptime-val">00:00:00</span></p>
+                <p class="text-[10px] text-cyan-500 font-mono">Status: ACTIVE_STABLE</p>
+            </div>
+            <button class="bg-cyan-500/10 border border-cyan-500/50 px-4 py-2 rounded-lg text-xs font-bold text-cyan-400 hover:bg-cyan-500/20 transition-all">
+                Export Data
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Sidebar Stats -->
+        <div class="lg:col-span-3 space-y-6">
+            <!-- BPM Card -->
+            <div class="glass-panel p-6 rounded-3xl relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-30 transition-opacity">
+                    <i data-lucide="heart" class="w-16 h-16 text-cyan-400"></i>
+                </div>
+                <p class="text-xs text-gray-400 uppercase font-bold mb-1">Simulated Heart Rate</p>
+                <div class="flex items-baseline gap-2">
+                    <h2 id="bpm-val" class="text-5xl font-black text-cyan-400 neon-text italic">72</h2>
+                    <span class="text-sm font-bold text-gray-500 uppercase">Bpm</span>
+                </div>
+                <p id="bpm-status" class="text-[10px] text-green-500 mt-2 font-mono uppercase tracking-widest">● Normal Resting</p>
+            </div>
+
+            <!-- Memory Card -->
+            <div class="glass-panel p-6 rounded-3xl space-y-4">
+                <div class="flex justify-between items-center">
+                    <p class="text-xs text-gray-400 uppercase font-bold">Browser Load</p>
+                    <i data-lucide="cpu" class="w-4 h-4 text-purple-500"></i>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between text-[10px] mono">
+                        <span>Allocated</span>
+                        <span id="mem-val">-- MB</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div id="mem-bar" class="w-0 h-full bg-purple-500 transition-all duration-1000"></div>
+                    </div>
+                </div>
+                <p class="text-[9px] text-gray-500 italic">Data diambil secara nyata dari alokasi memori tab browser saat ini.</p>
+            </div>
+
+            <!-- Session Log -->
+            <div class="glass-panel p-6 rounded-3xl h-[280px] flex flex-col">
+                <p class="text-[10px] text-gray-400 uppercase font-bold mb-4 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full"></span> Live Telemetry
+                </p>
+                <div id="live-logs" class="flex-1 overflow-y-auto space-y-2 font-mono text-[9px] text-gray-500">
+                    <div>> Initializing neuro-core...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Graph Area -->
+        <div class="lg:col-span-9 space-y-6">
+            <!-- ECG Visualization -->
+            <div class="glass-panel p-8 rounded-[40px] relative">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold italic">ECG Real-time Waveform</h3>
+                        <p class="text-xs text-gray-500">Visualisasi denyut berdasarkan osilasi frekuensi perangkat.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="px-2 py-1 bg-cyan-500/10 rounded border border-cyan-500/30 text-[9px] text-cyan-400 mono">GAIN: 1.2x</span>
+                        <span class="px-2 py-1 bg-cyan-500/10 rounded border border-cyan-500/30 text-[9px] text-cyan-400 mono">FREQ: 60Hz</span>
+                    </div>
+                </div>
+                
+                <div class="w-full h-[300px] relative bg-black/40 rounded-2xl overflow-hidden border border-white/5">
+                    <canvas id="ecg-canvas" class="w-full h-full"></canvas>
+                </div>
+            </div>
+
+            <!-- Lower Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Stress Level -->
+                <div class="glass-panel p-8 rounded-[40px] flex items-center gap-6">
+                    <div class="relative w-24 h-24 flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90">
+                            <circle cx="48" cy="48" r="40" stroke="currentColor" stroke-width="8" fill="transparent" class="text-white/5" />
+                            <circle id="stress-circle" cx="48" cy="48" r="40" stroke="currentColor" stroke-width="8" fill="transparent" 
+                                    class="text-cyan-400 transition-all duration-1000" stroke-dasharray="251.2" stroke-dashoffset="180" />
+                        </svg>
+                        <span id="stress-val" class="absolute text-xl font-black italic">28%</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm">Indeks Stress AI</h4>
+                        <p class="text-xs text-gray-500">Berdasarkan latensi eksekusi script dan interaksi UI.</p>
+                    </div>
+                </div>
+
+                <!-- Environmental Sensor -->
+                <div class="glass-panel p-8 rounded-[40px] space-y-4">
+                    <div class="flex justify-between">
+                        <h4 class="font-bold text-sm uppercase italic">Sensor Lingkungan</h4>
+                        <i data-lucide="thermometer" class="w-4 h-4 text-orange-500"></i>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-center">
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                            <p class="text-[9px] text-gray-500 uppercase font-bold">Temp (Est)</p>
+                            <p class="text-lg font-black italic">32.4°C</p>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                            <p class="text-[9px] text-gray-500 uppercase font-bold">Light</p>
+                            <p class="text-lg font-black italic" id="light-val">-- lx</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // 1. Uptime Counter (Real-time)
+        let startTime = Date.now();
+        setInterval(() => {
+            let diff = Date.now() - startTime;
+            let h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+            let m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+            let s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+            document.getElementById('uptime-val').innerText = `${h}:${m}:${s}`;
+        }, 1000);
+
+        // 2. Memory Usage (Real Data if supported)
+        function updateMemory() {
+            const memInfo = window.performance && window.performance.memory;
+            const memVal = document.getElementById('mem-val');
+            const memBar = document.getElementById('mem-bar');
+            
+            if (memInfo) {
+                const used = Math.round(memInfo.usedJSHeapSize / 1048576);
+                const limit = Math.round(memInfo.jsHeapLimit / 1048576);
+                const perc = (used / limit) * 100;
+                memVal.innerText = `${used} MB / ${limit} MB`;
+                memBar.style.width = `${perc}%`;
+            } else {
+                // Mock for unsupported browsers
+                const mockUsed = 24 + Math.random() * 5;
+                memVal.innerText = `${mockUsed.toFixed(1)} MB / 2048 MB`;
+                memBar.style.width = `${(mockUsed / 2048) * 100}%`;
+            }
+        }
+        setInterval(updateMemory, 2000);
+
+        // 3. Heart Rate Simulation Logic
+        let currentBPM = 72;
+        setInterval(() => {
+            currentBPM += (Math.random() - 0.5) * 4;
+            currentBPM = Math.max(60, Math.min(100, currentBPM));
+            document.getElementById('bpm-val').innerText = Math.round(currentBPM);
+            
+            const stress = (currentBPM - 60) * 2;
+            document.getElementById('stress-val').innerText = `${Math.round(stress)}%`;
+            const circle = document.getElementById('stress-circle');
+            const dash = 251.2 - (percToOffset(stress));
+            circle.style.strokeDashoffset = 251.2 - (stress / 100 * 251.2);
+            
+            if(Math.random() > 0.8) logMsg(`Fluctuating BPM: ${Math.round(currentBPM)}`);
+        }, 1500);
+
+        function percToOffset(p) { return (p/100) * 251.2; }
+
+        // 4. ECG Canvas Animation
+        const canvas = document.getElementById('ecg-canvas');
+        const ctx = canvas.getContext('2d');
+        let points = [];
+        let waveX = 0; // Merubah nama variabel 'x' menjadi 'waveX' untuk menghindari konflik
+
+        function resize() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        window.onresize = resize;
+        resize();
+
+        function drawECG() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Grid
+            ctx.strokeStyle = 'rgba(0, 242, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=20) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for(let i=0; i<canvas.height; i+=20) {
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+
+            // Wave Logic
+            ctx.beginPath();
+            ctx.strokeStyle = '#00f2ff';
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+
+            points.push({
+                x: waveX,
+                y: calculateY()
+            });
+
+            if(points.length > canvas.width / 2) points.shift();
+
+            points.forEach((p, i) => {
+                const drawX = (i / points.length) * canvas.width;
+                if(i === 0) ctx.moveTo(drawX, p.y);
+                else ctx.lineTo(drawX, p.y);
+            });
+
+            ctx.stroke();
+            waveX += 2;
+            requestAnimationFrame(drawECG);
+        }
+
+        function calculateY() {
+            const mid = canvas.height / 2;
+            // Detak jantung (QRS complex simulation)
+            let cycle = (Date.now() % (60000 / currentBPM));
+            let wave = Math.sin(Date.now() * 0.01) * 5; // Base noise
+            
+            if (cycle < 50) wave -= 10; // P wave
+            else if (cycle < 100) wave = wave;
+            else if (cycle < 130) wave -= 60; // Q
+            else if (cycle < 160) wave += 100; // R
+            else if (cycle < 190) wave -= 40; // S
+            else if (cycle < 300) wave += 15; // T wave
+
+            return mid - wave;
+        }
+        drawECG();
+
+        // 5. Ambient Light Sensor (Mocked from interaction)
+        document.addEventListener('mousemove', (e) => {
+            const light = Math.round((e.clientX / window.innerWidth) * 500);
+            document.getElementById('light-val').innerText = `${light} lx`;
+        });
+
+        function logMsg(msg) {
+            const container = document.getElementById('live-logs');
+            const div = document.createElement('div');
+            div.innerText = `> [${new Date().toLocaleTimeString()}] ${msg}`;
+            container.prepend(div);
+            if(container.children.length > 20) container.lastChild.remove();
+        }
+
+        logMsg("Sensor Bio-AI sinkron.");
+        logMsg("Mendeteksi aktivitas perangkat...");
+    </script>
+</body>
+</html>
